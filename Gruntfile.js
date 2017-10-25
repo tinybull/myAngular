@@ -29,29 +29,50 @@ module.exports = function (grunt) {
                         'node_modules/jquery/dist/jquery.js',
 
                         'src/apis.js',
-                        // 'src/loader.js',
-                        // 'src/injector.js',
+                        'src/loader.js',
+                        'src/injector.js',
+                        'src/angular.js',
+                        'src/angular_public.js',
 
                         // 'test/injector_spec.js',
                         // 'test/loader_spec.js'
 
-                        'src/scope/Scopes_And_Digest.js',
-                        'test/scope/Scopes_And_Digest_spec.js'
+                        // 'src/scope/Scopes_And_Digest.js',
+                        // 'test/scope/Scopes_And_Digest_spec.js',
 
                         // 'src/scope/Scope_Inheritance.js',
-                        // 'test/scope/Scope_Inheritance_spec.js'
+                        // 'test/scope/Scope_Inheritance_spec.js',
+
+                        // 'src/compile/DOM_Compilation_And_Basic_Directives.js',
+                        // 'test/compile/DOM_Compilation_And_Basic_Directives_spec.js',
+
+                        // 'src/compile/Directive_Attributes.js',
+                        // 'test/compile/Directive_Attributes_spec.js',
+
+                        'src/compile/Directive_Linking_And_Scopes.js',
+                        'test/compile/Directive_Linking_And_Scopes_spec.js'
+
                     ],
                     watch_files: [
                         // 'src/scope/Scope_Inheritance.js',
                         // 'test/scope/Scope_Inheritance_spec.js'
 
-                        'src/scope/Scopes_And_Digest.js',
-                        'test/scope/Scopes_And_Digest_spec.js'
+                        // 'src/scope/Scopes_And_Digest.js',
+                        // 'test/scope/Scopes_And_Digest_spec.js'
                         // 'src/loader.js',
                         // 'src/injector.js',
 
                         // 'test/injector_spec.js',
-                        // 'test/loader_spec.js'
+                        // 'test/loader_spec.js',
+
+                        // 'src/compile/DOM_Compilation_And_Basic_Directives.js',
+                        // 'test/compile/DOM_Compilation_And_Basic_Directives_spec.js',
+
+                        // 'src/compile/Directive_Attributes.js',
+                        // 'test/compile/Directive_Attributes_spec.js',
+
+                        'src/compile/Directive_Linking_And_Scopes.js',
+                        'test/compile/Directive_Linking_And_Scopes_spec.js'
                     ]
                 }
             }

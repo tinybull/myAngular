@@ -145,7 +145,6 @@ function createInjector(modulesToLoad, strictDi) {
          * @returns {UnwrappedType}
          */
         function instantiate(Type, locals) {
-            console.log(Type);
             var UnwrappedType = _.isArray(Type) ? _.last(Type) : Type;
             var instance = Object.create(UnwrappedType.prototype);
             invoke(Type, instance, locals);

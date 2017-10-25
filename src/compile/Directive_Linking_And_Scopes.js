@@ -47,6 +47,14 @@ function isBooleanAttribute(node, attrName) {
     return BOOLEAN_ATTRS[attrName] && BOOLEAN_ELEMENTS[node.nodeName];
 }
 
+function groupElementsLinkFnWrapper(linkFn, attrStart, attrEnd) {
+    return function (scope, element, attrs) {
+        var group = groupScan(element[0], attrStart, attrEnd);
+        console.log(linkFn);
+        return linkFn(scope, group, attrs);
+    };
+}
+
 var BOOLEAN_ATTRS = {
     multiple: true,
     selected: true,
@@ -67,6 +75,20 @@ var BOOLEAN_ELEMENTS = {
     DETAILS: true
 };
 
+function parseIsolateBindings(scope) {
+    var bindings = {};
+    _.forEach(scope, function (definition, scopeName) {
+        var match = definition.match(/\s*([@&]|=(\*?))(\??)\s*(\w*)\s*/);
+        bindings[scopeName] = {
+            mode: match[1][0],
+            collection: match[2] === '*',
+            optional: match[3],
+            attrName: match[4] || scopeName
+        };
+    });
+    return bindings;
+}
+
 function $CompileProvider($provide) {
 
     var hasDirectives = {};
@@ -85,6 +107,12 @@ function $CompileProvider($provide) {
                         var directive = $injector.invoke(factory);
                         directive.restrict = directive.restrict || 'EA';
                         directive.priority = directive.priority || 0;
+                        if (directive.link && !directive.compile) {
+                            directive.compile = _.constant(directive.link);
+                        }
+                        if (_.isObject(directive.scope)) {
+                            directive.$$isolateBindings = parseIsolateBindings(directive.scope);
+                        }
                         directive.name = directive.name || name;
                         directive.index = i;
                         return directive;
@@ -100,7 +128,7 @@ function $CompileProvider($provide) {
 
     };
 
-    this.$get = ['$injector','$rootScope', function ($injector,$rootScope) {
+    this.$get = ['$injector', '$rootScope', '$parse', function ($injector, $rootScope, $parse) {
 
         function Attributes(element) {
             this.$$element = element;
@@ -177,19 +205,213 @@ function $CompileProvider($provide) {
             }
         };
 
+        /*
+         public compile function returns the public link function
+         An individual directive's compile function returns its link function
+         we should connecting the public link function and the directive link functions together.
+         */
         function compile($compileNodes) {
-            return compileNodes($compileNodes);
+
+            //a composite of individual node linking functions.
+            var compositeLinkFn = compileNodes($compileNodes);
+
+            return function publicLinkFn(scope) {
+                $compileNodes.data('$scope', scope);
+                compositeLinkFn(scope, $compileNodes);  //compile和link所接受的Node相同!
+            };
         }
 
         function compileNodes($compileNodes) {
-            _.forEach($compileNodes, function (node) {
+            var linkFns = [];
+            _.forEach($compileNodes, function (node, i) {
                 var attrs = new Attributes($(node));
                 var directives = collectDirectives(node, attrs);
-                var terminal = applyDirectivesToNode(directives, node, attrs);
-                if (!terminal && node.childNodes && node.childNodes.length) {
-                    compileNodes(node.childNodes);
+                var nodeLinkFn;
+                if (directives.length) {
+                    //each node have a node link function
+                    nodeLinkFn = applyDirectivesToNode(directives, node, attrs);
+                }
+                var childLinkFn;
+                if ((!nodeLinkFn || !nodeLinkFn.terminal) && node.childNodes && node.childNodes.length) {
+                    childLinkFn = compileNodes(node.childNodes);
+                }
+                if (nodeLinkFn && nodeLinkFn.scope) {
+                    attrs.$$element.addClass('ng-scope');
+                }
+                if (nodeLinkFn || childLinkFn) {
+                    linkFns.push({
+                        nodeLinkFn: nodeLinkFn,
+                        childLinkFn: childLinkFn,
+                        idx: i
+                    });
                 }
             });
+
+            //link all the individual nodes.
+            function compositeLinkFn(scope, linkNodes) {
+                var stableNodeList = [];
+                _.forEach(linkFns, function (linkFn) {
+                    var nodeIdx = linkFn.idx;
+                    stableNodeList[nodeIdx] = linkNodes[nodeIdx];   //保存初始的DOM结构
+                });
+                _.forEach(linkFns, function (linkFn) {
+                    var node = stableNodeList[linkFn.idx];
+                    if (linkFn.nodeLinkFn) {
+                        if (linkFn.nodeLinkFn.scope) {
+                            scope = scope.$new();
+                            $(node).data('$scope', scope);
+                        }
+                        linkFn.nodeLinkFn(linkFn.childLinkFn, scope, node);
+                    } else {
+                        linkFn.childLinkFn(scope, node.childNodes);
+                    }
+                });
+            }
+
+            return compositeLinkFn;
+        }
+
+        function applyDirectivesToNode(directives, compileNode, attrs) {
+            var $compileNode = $(compileNode);
+            var terminalPriority = -Number.MAX_VALUE;
+            var terminal = false;
+            var preLinkFns = [], postLinkFns = [];
+            var newScopeDirective, newIsolateScopeDirective;
+
+            function addLinkFns(preLinkFn, postLinkFn, attrStart, attrEnd, isolateScope) {
+                if (preLinkFn) {
+                    if (attrStart) {
+                        preLinkFn = groupElementsLinkFnWrapper(preLinkFn, attrStart, attrEnd);
+                    }
+                    preLinkFn.isolateScope = isolateScope;
+                    preLinkFns.push(preLinkFn);
+                }
+                if (postLinkFn) {
+                    if (attrStart) {
+                        postLinkFn = groupElementsLinkFnWrapper(postLinkFn, attrStart, attrEnd);
+                    }
+                    postLinkFn.isolateScope = isolateScope;
+                    postLinkFns.push(postLinkFn);
+                }
+            }
+
+            _.forEach(directives, function (directive) {    //排序好的diretives数组
+
+                if (directive.$$start) {
+                    $compileNode = groupScan(compileNode, directive.$$start, directive.$$end);
+                }
+                if (directive.priority < terminalPriority) {
+                    return false;   //terminate compilation
+                }
+
+                if (directive.scope) {
+                    if (_.isObject(directive.scope)) {
+                        if (newIsolateScopeDirective || newScopeDirective) {
+                            throw 'Multiple directives asking for new/inherited scope';
+                        }
+                        newIsolateScopeDirective = directive;
+                    } else {
+                        if (newIsolateScopeDirective) {
+                            throw 'Multiple directives asking for new/inherited scope';
+                        }
+                        newScopeDirective = newScopeDirective || directive;
+                    }
+                }
+                if (directive.compile) {
+                    var linkFn = directive.compile($compileNode, attrs);
+                    var isolateScope = (directive === newIsolateScopeDirective);
+                    var attrStart = directive.$$start;
+                    var attrEnd = directive.$$end;
+                    if (_.isFunction(linkFn)) {
+                        addLinkFns(null, linkFn, attrStart, attrEnd, isolateScope);
+                    } else if (linkFn) {
+                        addLinkFns(linkFn.pre, linkFn.post, attrStart, attrEnd, isolateScope);
+                    }
+                }
+
+                if (directive.terminal) {
+                    terminal = true;
+                    terminalPriority = directive.priority;
+                }
+            });
+
+            // node link function: invoke the directive link functions
+            function nodeLinkFn(childLinkFn, scope, linkNode) {
+                var $element = $(linkNode);
+
+                var isolateScope;
+                if (newIsolateScopeDirective) {
+                    isolateScope = scope.$new(true);
+                    $element.addClass('ng-isolate-scope');
+                    $element.data('$isolateScope', isolateScope);
+                    _.forEach(newIsolateScopeDirective.$$isolateBindings, function (definition, scopeName) {
+                        var attrName = definition.attrName;
+                        switch (definition.mode) {
+                            case '@':
+                                attrs.$observe(attrName, function (newAttrValue) {
+                                    isolateScope[scopeName] = newAttrValue;
+                                });
+                                if (attrs[attrName]) {
+                                    isolateScope[scopeName] = attrs[attrName];
+                                }
+                                break;
+                            case '=':
+                                if (definition.optional && !attrs[attrName]) {
+                                    break;
+                                }
+                                var parentGet = $parse(attrs[attrName]);
+                                var lastValue = isolateScope[scopeName] = parentGet(scope);
+                                isolateScope[scopeName] = parentGet(scope);
+                                var parentValueWatch = function () {
+                                    var parentValue = parentGet(scope);
+                                    if (isolateScope[scopeName] !== parentValue) {
+                                        if (parentValue !== lastValue) {
+                                            isolateScope[scopeName] = parentValue;
+                                        } else {
+                                            parentValue = isolateScope[scopeName];
+                                            parentGet.assign(scope, parentValue);
+                                        }
+                                    }
+                                    lastValue = parentValue;
+                                    return lastValue;
+                                };
+                                var unwatch;
+                                if (definition.collection) {
+                                    unwatch = scope.$watchCollection(attrs[attrName], parentValueWatch);
+                                } else {
+                                    unwatch = scope.$watch(parentValueWatch);
+                                }
+                                isolateScope.$on('$destroy', unwatch);
+                                break;
+                            case '&':
+                                var parentExpr = $parse(attrs[attrName]);
+                                if (parentExpr === _.noop && definition.optional) {
+                                    break;
+                                }
+                                isolateScope[scopeName] = function(locals) {
+                                    return parentExpr(scope,locals);
+                                };
+                                break;
+                        }
+                    });
+                }
+
+                _.forEach(preLinkFns, function (linkFn) {
+                    linkFn(linkFn.isolateScope ? isolateScope : scope, $element, attrs);
+                });
+
+                if (childLinkFn) {    //先link子Node
+                    childLinkFn(scope, linkNode.childNodes);
+                }
+                _.forEachRight(postLinkFns, function (linkFn) {
+                    linkFn(linkFn.isolateScope ? isolateScope : scope, $element, attrs);
+                });
+            }
+
+            nodeLinkFn.terminal = terminal;
+            nodeLinkFn.scope = newScopeDirective && newScopeDirective.scope;
+
+            return nodeLinkFn;
         }
 
         function collectDirectives(node, attrs) {
@@ -278,31 +500,6 @@ function $CompileProvider($provide) {
             return match;
         }
 
-        function applyDirectivesToNode(directives, compileNode, attrs) {
-            var $compileNode = $(compileNode);
-            var terminalPriority = -Number.MAX_VALUE;
-            var terminal = false;
-            _.forEach(directives, function (directive) {    //排序好的diretives数组
-
-                if (directive.$$start) {
-                    $compileNode = groupScan(compileNode, directive.$$start, directive.$$end);
-                }
-
-                if (directive.priority < terminalPriority) {
-                    return false;   //terminate compilation
-                }
-
-                if (directive.compile) {
-                    directive.compile($compileNode, attrs);
-                }
-                if (directive.terminal) {
-                    terminal = true;
-                    terminalPriority = directive.priority;
-                }
-            });
-            return terminal;
-        }
-
         function directiveIsMultiElement(name) {
             if (hasDirectives.hasOwnProperty(name)) {
                 var directives = $injector.get(name + 'Directive');
@@ -312,6 +509,7 @@ function $CompileProvider($provide) {
         }
 
         return compile;
+
     }];
 }
 

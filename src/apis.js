@@ -38,6 +38,3 @@ HashMap.prototype = {
         return value;
     }
 };
-
-
-

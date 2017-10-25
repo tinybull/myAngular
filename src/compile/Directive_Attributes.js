@@ -43,10 +43,6 @@ function groupScan(node, startAttr, endAttr) {
     return $(nodes);
 }
 
-function isBooleanAttribute(node, attrName) {
-    return BOOLEAN_ATTRS[attrName] && BOOLEAN_ELEMENTS[node.nodeName];
-}
-
 var BOOLEAN_ATTRS = {
     multiple: true,
     selected: true,
@@ -56,7 +52,6 @@ var BOOLEAN_ATTRS = {
     required: true,
     open: true
 };
-
 var BOOLEAN_ELEMENTS = {
     INPUT: true,
     SELECT: true,
@@ -66,6 +61,10 @@ var BOOLEAN_ELEMENTS = {
     FORM: true,
     DETAILS: true
 };
+
+function isBooleanAttribute(node, attrName) {
+    return BOOLEAN_ATTRS[attrName] && BOOLEAN_ELEMENTS[node.nodeName];
+}
 
 function $CompileProvider($provide) {
 
@@ -104,12 +103,14 @@ function $CompileProvider($provide) {
 
         function Attributes(element) {
             this.$$element = element;
-            this.$attr = {};
+            this.$attr = {};    //store a mapping of the normalized attribute names to their original names
         }
 
+        //设置DOM节点属性
         Attributes.prototype.$set = function (key, value, writeAttr, attrName) {
-            this[key] = value;
+            this[key] = value; //动态设置attributes属性及其值
 
+            //设置property
             if (isBooleanAttribute(this.$$element[0], key)) {
                 this.$$element.prop(key, value);
             }
@@ -124,11 +125,12 @@ function $CompileProvider($provide) {
                 this.$attr[key] = attrName;
             }
 
+            //是否映射到attribute元素上
             if (writeAttr !== false) {
                 this.$$element.attr(attrName, value);
             }
 
-            if (this.$$observers) {
+            if (this.$$observers) {     //如果有observers，立即调用
                 _.forEach(this.$$observers[key], function (observer) {
                     try {
                         observer(value);
@@ -145,7 +147,7 @@ function $CompileProvider($provide) {
             this.$$observers[key] = this.$$observers[key] || [];
             this.$$observers[key].push(fn);
             $rootScope.$evalAsync(function () {
-                fn(self[key]);
+                fn(self[key]);      //guaranteed to run once after initially registered.
             });
 
             return function () {
@@ -223,6 +225,7 @@ function $CompileProvider($provide) {
                     }
 
                     addDirective(directives, normalizedAttrName, 'A', attrStartName, attrEndName);
+
                     if (isNgAttr || !attrs.hasOwnProperty(normalizedAttrName)) {
                         attrs[normalizedAttrName] = attr.value.trim();
                         if (isBooleanAttribute(node, normalizedAttrName)) {
@@ -257,7 +260,7 @@ function $CompileProvider($provide) {
         }
 
         function addDirective(directives, name, mode, attrStartName, attrEndName) {
-            var match;
+            var match;  //返回给的给定的name是否匹配到了指令
             if (hasDirectives.hasOwnProperty(name)) {
                 var foundDirectives = $injector.get(name + 'Directive');
                 var applicableDirectives = _.filter(foundDirectives, function (dir) {
@@ -273,7 +276,6 @@ function $CompileProvider($provide) {
                     directives.push(directive);
                     match = directive;
                 });
-                //directives.push.apply(directives, applicableDirectives);      //一次性将一个数组的元素都push到directives
             }
             return match;
         }
@@ -282,7 +284,7 @@ function $CompileProvider($provide) {
             var $compileNode = $(compileNode);
             var terminalPriority = -Number.MAX_VALUE;
             var terminal = false;
-            _.forEach(directives, function (directive) {    //排序好的diretives数组
+            _.forEach(directives, function (directive) {    //排序好的directives数组
 
                 if (directive.$$start) {
                     $compileNode = groupScan(compileNode, directive.$$start, directive.$$end);

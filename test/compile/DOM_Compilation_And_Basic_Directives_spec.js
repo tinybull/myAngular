@@ -534,5 +534,22 @@ describe('$compile', function () {
         });
     });
 
+    it('handle cases with “nested” groups correctly', function () {
+        var compileEl = false;
+        var injector = makeInjectorWithDirectives('myDir', function () {
+            return {
+                multiElement: true,
+                compile: function (element) {
+                    compileEl = element;
+                }
+            };
+        });
+        injector.invoke(function ($compile) {
+            var el = $('<div my-dir-start></div><div my-dir-start></div><div my-dir-end></div><div my-dir-end></div>');
+            $compile(el);
+            expect(compileEl.length).toBe(2);
+        });
+    });
+
 
 });

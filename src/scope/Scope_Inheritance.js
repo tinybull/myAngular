@@ -2,23 +2,18 @@ function initWatchVal() {
 }
 
 function Scope() {
+    // 每个Scope的私有变量
     this.$$watchers = [];
     this.$$children = [];
+    this.$$phase = null;
 
-    this.$root = this;      //所有scope的$root作用域都相同
-
-    /**
-     * 所有scope公用的属性
-     */
+    //全局使用属性
+    this.$root = this;
     this.$$asyncQueue = [];
     this.$$applyAsyncQueue = [];
     this.$$postDigestQueue = [];
-
-
-    this.$$phase = null;
     this.$$applyAsyncId = null;
     this.$$lastDirtyWatch = null;
-
 }
 
 Scope.prototype.$watch = function (watchFn, listenerFn, valueEq) {
@@ -42,10 +37,12 @@ Scope.prototype.$watch = function (watchFn, listenerFn, valueEq) {
     };
 };
 
+//对watcher进行脏值检测
 Scope.prototype.$$digestOnce = function () {
 
     var dirty;
 
+    //依次迭代Scope树
     this.$$everyScope(function (scope) {        //注入当前的scope
         var newValue, oldValue;
         _.forEachRight(scope.$$watchers, function (watcher) {    //forEachRight: length=this.$$watchers.length
@@ -60,7 +57,7 @@ Scope.prototype.$$digestOnce = function () {
                         dirty = true;
                     } else if (scope.$root.$$lastDirtyWatch === watcher) {
                         dirty = false;
-                        return false;
+                        return false;   //short-circuit the loop
                     }
                 }
             } catch (e) {
@@ -70,7 +67,7 @@ Scope.prototype.$$digestOnce = function () {
         return dirty !== false;
     });
 
-    return dirty;
+    return dirty;   //当一次digest执行中没有检测到值的改变，dirty为undefined
 };
 
 Scope.prototype.$digest = function () {
@@ -92,7 +89,6 @@ Scope.prototype.$digest = function () {
             } catch (e) {
                 console.error(e);
             }
-
         }
         dirty = this.$$digestOnce();
         if ((dirty || this.$$asyncQueue.length) && !(ttl--)) {
@@ -129,7 +125,7 @@ Scope.prototype.$apply = function (expr) {
         return this.$eval(expr);
     } finally {
         this.$clearPhase();
-        this.$root.$digest();
+        this.$root.$digest();   //从根开始digest
     }
 };
 
@@ -149,7 +145,7 @@ Scope.prototype.$beginPhase = function (phase) {
     if (this.$$phase) {
         throw this.$$phase + ' already in progress';
     }
-    this.$$phase = phase;
+    this.$$phase = phase;   //给当前Scope.$$phase赋值，会隐藏掉$parent中的$$phase值
 };
 
 Scope.prototype.$clearPhase = function () {
@@ -161,7 +157,7 @@ Scope.prototype.$applyAsync = function (expr) {
     self.$$applyAsyncQueue.push(function () {
         self.$eval(expr);
     });
-    if (self.$root.$$applyAsyncId === null) {
+    if (self.$root.$$applyAsyncId === null) {   //使用$rootScope的$$applyAsyncId
         self.$root.$$applyAsyncId = setTimeout(function () {
             self.$apply(_.bind(self.$$flushApplyAsync, self));
         }, 0);
@@ -231,30 +227,29 @@ Scope.prototype.$watchGroup = function (watchFns, listenerFn) {
     };
 };
 
-Scope.prototype.$new = function (isolated, parent) {
+Scope.prototype.$new = function (isolated, parent) {    //如果传递的parent不是Scope类型的？
 
     var child;
     parent = parent || this;    //hierarchical parent
 
     if (isolated) {
-        child = new Scope();
-        child.$root = parent.$root;
-        child.$$asyncQueue = parent.$$asyncQueue;
-        child.$$postDigestQueue = parent.$$postDigestQueue;
-        child.$$applyAsyncQueue = parent.$$applyAsyncQueue;
+        child = new Scope();    //非继承自父Scope
+        child.$root = this.$root;
+        child.$$asyncQueue = this.$$asyncQueue;
+        child.$$postDigestQueue = this.$$postDigestQueue;
+        child.$$applyAsyncQueue = this.$$applyAsyncQueue;
     } else {
         var ChildScope = function () {
             this.$$watchers = [];
             this.$$children = [];
         };
         ChildScope.prototype = this;    //prototypical parent
-
         child = new ChildScope();
     }
 
     child.$parent = parent;
-    parent.$$children.push(child);
 
+    parent.$$children.push(child);
 
     return child;
 };
@@ -262,10 +257,10 @@ Scope.prototype.$new = function (isolated, parent) {
 Scope.prototype.$$everyScope = function (fn) {
     if (fn(this)) {
         return this.$$children.every(function (child) {
-            return child.$$everyScope(fn);
+            return child.$$everyScope(fn);  //递归调用，返回值是false时，终止迭代
         });
     } else {
-        return false;
+        return false;   //返回false，表示所有watch已经clean
     }
 };
 
@@ -277,6 +272,5 @@ Scope.prototype.$destroy = function () {
             siblings.splice(indexOfThis, 1);
         }
     }
-
     this.$$watchers = null;
 };

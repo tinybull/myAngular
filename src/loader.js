@@ -36,8 +36,10 @@ function setupModuleLoader(window) {
             service: invokeLater('$provide', 'service'),
             decorator: invokeLater('$provide', 'decorator'),
 
+            filter: invokeLater('$filterProvider', 'register'),
+
             directive: invokeLater('$compileProvider', 'directive'),    //创建$compileProvider的provider要先被注册
-            controller: invokeLater('$controllerProvider', 'register'),
+            controller: invokeLater('$controllerProvider', 'register'), //queue up a call to the register method of the $controllerProvider
 
             config: invokeLater('$injector', 'invoke', 'push', configBlocks),   //providerCache.$injector
             run: function (fn) {
@@ -58,7 +60,7 @@ function setupModuleLoader(window) {
         return moduleInstance;
 
         /**
-         * 这里所有的service都是从providerCache中获取的!!
+         * 这里所有的service都是从providerCache中获取的
          * service: object which 'method' will call,such as $provide or $injector,...providers,
          * method: a method name of service,such as $provide.constant() or $injector.invoke()
          * arrayMethod: 决定插入invokeQueue头或者尾

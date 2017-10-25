@@ -1,12 +1,13 @@
+//returns the name of the given DOM node, which may be a raw DOM node or a JQuery-wrapped one.
 function nodeName(element) {
     return element.nodeName ? element.nodeName : element[0].nodeName;
 }
 
+var PREFIX_REGEXP = /(x[:\-_]|data[:\-_])/i;
+//takes the name of a DOM element as an argument and returns a “normalized” directive name.
 function directiveNormalize(name) {
     return _.camelCase(name.replace(PREFIX_REGEXP, ''));
 }
-
-var PREFIX_REGEXP = /(x[:\-_]|data[:\-_])/i;
 
 function byPriority(a, b) {
     var diff = b.priority - a.priority;     //比较priority
@@ -20,7 +21,6 @@ function byPriority(a, b) {
         }
     }
 }
-
 function groupScan(node, startAttr, endAttr) {
     var nodes = [];
     if (startAttr && node && node.hasAttribute(startAttr)) {
@@ -55,8 +55,10 @@ function $CompileProvider($provide) {
             }
             if (!hasDirectives.hasOwnProperty(name)) {
                 hasDirectives[name] = [];
+                //注册指令，实例化指令的provider
                 $provide.factory(name + 'Directive', ['$injector', function ($injector) {
-                    var factories = hasDirectives[name];
+                    var factories = hasDirectives[name];    //运行期决定数组的元素
+                    //返回指令实例数组
                     return _.map(factories, function (factory, i) {
                         var directive = $injector.invoke(factory);
                         directive.restrict = directive.restrict || 'EA';
@@ -67,13 +69,12 @@ function $CompileProvider($provide) {
                     });
                 }]);
             }
-            hasDirectives[name].push(directiveFactory);
+            hasDirectives[name].push(directiveFactory); //注册指令
         } else {
             _.forEach(name, function (directiveFactory, name) {
                 that.directive(name, directiveFactory);
             });
         }
-
     };
 
     this.$get = ['$injector', function ($injector) {
@@ -81,7 +82,12 @@ function $CompileProvider($provide) {
             return compileNodes($compileNodes);
         }
 
+        /**
+         * 1.在Node节点上找到指令的名称，并获取指令的实例
+         * 2.在Node节点上运用指令的实例
+         */
         function compileNodes($compileNodes) {
+            console.log($compileNodes);
             _.forEach($compileNodes, function (node) {
                 var directives = collectDirectives(node);
                 var terminal = applyDirectivesToNode(directives, node);
@@ -91,8 +97,13 @@ function $CompileProvider($provide) {
             });
         }
 
+        /**
+         * Figure out what directives apply to the DOM Node and return them.
+         * @param DOM Node
+         * @returns {Array}
+         */
         function collectDirectives(node) {
-            var directives = [];
+            var directives = [];        //指令的实例数组
             if (node.nodeType === Node.ELEMENT_NODE) {
                 var normalizedNodeName = directiveNormalize(nodeName(node).toLowerCase());
                 addDirective(directives, normalizedNodeName, 'E');   //element
@@ -101,11 +112,9 @@ function $CompileProvider($provide) {
                     var attrStartName, attrEndName;
                     var name = attr.name;
                     var normalizedAttrName = directiveNormalize(name.toLowerCase());    //可能包含-start/end suffix
-
                     if (/^ngAttr[A-Z]/.test(normalizedAttrName)) {
                         name = _.kebabCase(normalizedAttrName[6].toLowerCase() + normalizedAttrName.substring(7));
                     }
-
                     var directiveNName = normalizedAttrName.replace(/(Start|End)$/, '');
                     if (directiveIsMultiElement(directiveNName)) {
                         if (/Start$/.test(normalizedAttrName)) {
@@ -118,7 +127,6 @@ function $CompileProvider($provide) {
 
                     addDirective(directives, normalizedAttrName, 'A', attrStartName, attrEndName);
                 });
-
                 _.forEach(node.classList, function (cls) {      //class
                     var normalizedClassName = directiveNormalize(cls);
                     addDirective(directives, normalizedClassName, 'C');
@@ -136,13 +144,13 @@ function $CompileProvider($provide) {
 
         function addDirective(directives, name, mode, attrStartName, attrEndName) {
             if (hasDirectives.hasOwnProperty(name)) {
-                var foundDirectives = $injector.get(name + 'Directive');
+                var foundDirectives = $injector.get(name + 'Directive');    //获得指令的实例
                 var applicableDirectives = _.filter(foundDirectives, function (dir) {
                     return dir.restrict.indexOf(mode) !== -1;
                 });
                 _.forEach(applicableDirectives, function (directive) {
                     if (attrStartName) {
-                        directive = _.create(directive, {
+                        directive = _.create(directive, {   //临时创建一个新的directive，原来的保持不变，因为指令可以不带有-start来使用
                             $$start: attrStartName,
                             $$end: attrEndName
                         });
@@ -164,7 +172,7 @@ function $CompileProvider($provide) {
                 }
 
                 if (directive.priority < terminalPriority) {
-                    return false;   //terminate compilation
+                    return false;   //terminate compilation，退出循环
                 }
 
                 if (directive.compile) {
