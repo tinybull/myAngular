@@ -22,6 +22,8 @@ function byPriority(a, b) {
     }
 }
 function groupScan(node, startAttr, endAttr) {
+    // console.log(startAttr);  //my-dir-start
+    // console.log(endAttr);   // my-dir-end
     var nodes = [];
     if (startAttr && node && node.hasAttribute(startAttr)) {
         var depth = 0;
@@ -90,6 +92,7 @@ function $CompileProvider($provide) {
             console.log($compileNodes);
             _.forEach($compileNodes, function (node) {
                 var directives = collectDirectives(node);
+                console.log(directives)
                 var terminal = applyDirectivesToNode(directives, node);
                 if (!terminal && node.childNodes && node.childNodes.length) {
                     compileNodes(node.childNodes);
@@ -143,6 +146,8 @@ function $CompileProvider($provide) {
         }
 
         function addDirective(directives, name, mode, attrStartName, attrEndName) {
+            // console.log(attrStartName);//my-dir-start
+            // console.log(attrEndName);   // my-dir-end
             if (hasDirectives.hasOwnProperty(name)) {
                 var foundDirectives = $injector.get(name + 'Directive');    //获得指令的实例
                 var applicableDirectives = _.filter(foundDirectives, function (dir) {

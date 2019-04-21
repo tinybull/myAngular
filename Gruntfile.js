@@ -29,48 +29,57 @@ module.exports = function (grunt) {
                         'node_modules/jquery/dist/jquery.js',
 
                         'src/apis.js',
-                        'src/loader.js',
-                        'src/injector.js',
                         'src/angular.js',
                         'src/angular_public.js',
 
-                        // 'test/injector_spec.js',
-                        // 'test/loader_spec.js'
-
-                        // 'src/scope/Scopes_And_Digest.js',
-                        // 'test/scope/Scopes_And_Digest_spec.js',
-
+                        // 'src/scope/Scope_And_Digest.js',
                         // 'src/scope/Scope_Inheritance.js',
-                        // 'test/scope/Scope_Inheritance_spec.js',
+                        // 'src/scope/Watching_Collections.js',
+                        'src/scope/Scope_Events.js',
+
+                        // 'src/ExpressionsAndFilters/LiteralExpressions.js',
+                        // 'src/ExpressionsAndFilters/LookupAndFunctionCallExpressions.js',
+                        // 'src/ExpressionsAndFilters/OperatorExpressions.js',
+                        // 'src/ExpressionsAndFilters/Filters.js',
+                        'src/ExpressionsAndFilters/ExpressionsAndWatchers.js',
+
+                        'src/loader.js',
+                        'src/injector.js',
+
+                        'src/q.js',
+                        'src/http.js',
+                        'src/http_backend.js',
 
                         // 'src/compile/DOM_Compilation_And_Basic_Directives.js',
-                        // 'test/compile/DOM_Compilation_And_Basic_Directives_spec.js',
-
+                        // 'test/compile/DOM_Compilation_And_Basic_Directives_spec.js'
                         // 'src/compile/Directive_Attributes.js',
-                        // 'test/compile/Directive_Attributes_spec.js',
+
+                        // 'src/compile/Controllers.js',
+                        // 'test/compile/Controllers_spec.js'
 
                         'src/compile/Directive_Linking_And_Scopes.js',
                         'test/compile/Directive_Linking_And_Scopes_spec.js'
 
-                    ],
-                    watch_files: [
-                        // 'src/scope/Scope_Inheritance.js',
-                        // 'test/scope/Scope_Inheritance_spec.js'
-
-                        // 'src/scope/Scopes_And_Digest.js',
-                        // 'test/scope/Scopes_And_Digest_spec.js'
-                        // 'src/loader.js',
-                        // 'src/injector.js',
-
+                        // 'test/http_spec.js',
+                        // 'test/angular_public_spec.js'
+                        // 'test/scope/Scope_And_Digest_spec.js'
+                        // 'test/scope/Scope_Inheritance_spec.js',
+                        // 'test/scope/Watching_Collections_spec.js',
+                        // 'test/scope/Scope_Events_spec.js',
+                        // 'test/ExpressionsAndFilters/LookupAndFunctionCallExpressions_spec.js',
+                        // 'test/ExpressionsAndFilters/OperatorExpressions_spec.js',
+                        // 'test/ExpressionsAndFilters/Filters_spec.js',
+                        // 'test/ExpressionsAndFilters/ExpressionsAndWatchers_spec.js',
+                        // 'test/ExpressionsAndFilters/LiteralExpressions_spec.js'
                         // 'test/injector_spec.js',
                         // 'test/loader_spec.js',
+                        // 'test/Filters_spec.js',
+                        // 'test/q_spec.js',
+                        // 'test/compile/Directive_Attributes_spec.js'
 
-                        // 'src/compile/DOM_Compilation_And_Basic_Directives.js',
-                        // 'test/compile/DOM_Compilation_And_Basic_Directives_spec.js',
 
-                        // 'src/compile/Directive_Attributes.js',
-                        // 'test/compile/Directive_Attributes_spec.js',
-
+                    ],
+                    watch_files: [
                         'src/compile/Directive_Linking_And_Scopes.js',
                         'test/compile/Directive_Linking_And_Scopes_spec.js'
                     ]

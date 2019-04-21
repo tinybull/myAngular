@@ -353,8 +353,7 @@ function $HttpParamSerializerJQLikeProvider() {
                             (topLevel ? '' : ']'));
                     });
                 } else {
-                    parts.push(
-                        encodeURIComponent(prefix) + '=' + encodeURIComponent(value));
+                    parts.push(encodeURIComponent(prefix) + '=' + encodeURIComponent(value));
                 }
             }
 

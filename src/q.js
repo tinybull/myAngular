@@ -18,7 +18,7 @@ function qFactory(callLater) {
     function Promise() {
         //store internal state
         this.$$state = {
-            pending: null,      //the item in pending array is array of callbacks
+            pending: null,      // the item in pending array is array of callbacks
             status: null,       // 1:resolved, 2:rejected
             value: null         // 保存resolve／reject的值
         };
@@ -95,6 +95,10 @@ function qFactory(callLater) {
         }
     };
 
+    function defer() {
+        return new Deferred();
+    }
+
     //call the Promise callback later
     function scheduleProcessQueue(state) {
         callLater(function () {     //next digest loop
@@ -142,10 +146,6 @@ function qFactory(callLater) {
         } else {
             return makePromise(value, resolved);
         }
-    }
-
-    function defer() {
-        return new Deferred();
     }
 
     //返回一个rejected的Promise
